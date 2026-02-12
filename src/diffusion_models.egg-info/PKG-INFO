@@ -4,6 +4,8 @@ Version: 0.1.0
 Summary: Add your description here
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
+Requires-Dist: gitingest>=0.3.1
+Requires-Dist: setuptools<=79.0.0
 Requires-Dist: tensorboard>=2.20.0
 Requires-Dist: torch>=2.8.0
 Requires-Dist: torchvision>=0.23.0

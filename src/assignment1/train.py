@@ -4,9 +4,10 @@ import torch.nn.functional as F
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm  # Import tqdm
-from data import get_dataloader
-from model import SimpleUNet
-from sample import sample
+from assignment1.data import get_dataloader
+from assignment1.model import UNet
+from assignment1.ema import EMA
+from assignment1.sample import sample
 
 # Hyperparameters
 T = 300
@@ -30,8 +31,11 @@ def forward_diffusion(x_0, t):
 
 def train():
     dataloader = get_dataloader(batch_size=batch_size)
-    model = SimpleUNet().to(device)
+    model = UNet().to(device)  # or ImprovedUNet
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+    # Initialize EMA
+    ema = EMA(model, decay=0.9999)
 
     train_writer = SummaryWriter("runs/ddpm_mnist/train")
     val_writer = SummaryWriter("runs/ddpm_mnist/val")
@@ -39,26 +43,26 @@ def train():
 
     print(f"Training on {device}...")
 
-    # Outer progress bar for epochs
     pbar = tqdm(range(epochs), desc="Epochs")
-
     for epoch in pbar:
         model.train()
         train_loss = 0
 
-        # Inner progress bar for batches
         batch_pbar = tqdm(dataloader, desc=f"Epoch {epoch}", leave=False)
         for images, _ in batch_pbar:
             images = images.to(device)
             t = torch.randint(0, T, (images.shape[0],), device=device).long()
-
             x_noisy, noise = forward_diffusion(images, t)
-            predicted_noise = model(x_noisy, t)
 
+            predicted_noise = model(x_noisy, t)
             loss = F.mse_loss(predicted_noise, noise)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+            # Update EMA after each step
+            ema.update()
 
             train_loss += loss.item()
             batch_pbar.set_postfix(loss=f"{loss.item():.4f}")
@@ -66,7 +70,7 @@ def train():
         avg_train_loss = train_loss / len(dataloader)
         train_writer.add_scalar("Loss/epoch", avg_train_loss, epoch)
 
-        # Validation logic
+        # Validation (using regular model, not EMA)
         model.eval()
         val_loss = 0
         with torch.no_grad():
@@ -82,24 +86,44 @@ def train():
         avg_val_loss = val_loss / 6
         val_writer.add_scalar("Loss/epoch", avg_val_loss, epoch)
 
-        # Update outer progress bar with stats
         pbar.set_postfix(
             train_loss=f"{avg_train_loss:.4f}", val_loss=f"{avg_val_loss:.4f}"
         )
 
-        # Checkpointing and Sampling
+        # Checkpointing and Sampling with EMA weights
         if epoch % 5 == 0 or epoch == epochs - 1:
-            torch.save(model.state_dict(), f"checkpoints/ddpm_epoch_{epoch}.pth")
+            # Save both regular and EMA checkpoints
+            torch.save(
+                {
+                    "model": model.state_dict(),
+                    "ema": ema.shadow,
+                    "optimizer": optimizer.state_dict(),
+                    "epoch": epoch,
+                },
+                f"checkpoints/ddpm_epoch_{epoch}.pth",
+            )
 
-            # Use tqdm.write so it doesn't break the progress bar formatting
-            tqdm.write(f"Generating samples at epoch {epoch}...")
+            tqdm.write(f"Generating samples at epoch {epoch} (using EMA)...")
+
+            # Use EMA weights for sampling
+            ema.apply_shadow()
             images = sample(model, 16, 1, 28, T, alpha, alpha_cumprod, beta, device)
+            ema.restore()
+
             grid = torchvision.utils.make_grid(images, nrow=4)
             train_writer.add_image("Generated_Digits", grid, epoch)
 
     train_writer.close()
     val_writer.close()
-    torch.save(model.state_dict(), "ddpm_mnist_final.pth")
+
+    # Save final model with EMA
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "ema": ema.shadow,
+        },
+        "ddpm_mnist_final.pth",
+    )
 
 
 if __name__ == "__main__":
