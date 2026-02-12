@@ -83,29 +83,27 @@ python src/assignment1/classifier/train.py
 ```
 
 
-2. 
-**Evaluation:** Use the `load_classifier` function in `src/assignment1/classifier/helper.py` to load your trained ResNet model and evaluate your generated DDPM samples.
-
-
-
+2. **Evaluation:** Use the `load_classifier` function in
+   `src/assignment1/classifier/helper.py` to load your trained ResNet model and
+evaluate your generated DDPM samples.
 ---
 
-## 💡 Implementation Details for Your Report
+Here you will need to implement the logic to compute FID and IS scores for your
+generated samples. The `src/assignment1/classifier/` directory contains helper
+functions and scripts to assist you in this evaluation.
+
+## Implementation Details for Your Report
 
 ### Positional Encoding (Task 2)
 
-In `model.py`, look for the `TimeEmbedding` class. Note how the scalar  is transformed into a vector of size `dim` using sinusoidal functions before being injected into the `ResidualBlock` via a Linear layer and SiLU activation.
+In `model.py`, look for the `TimeEmbedding` class. Note how the scalar  is
+transformed into a vector of size `dim` using sinusoidal functions before being
+injected into the `ResidualBlock` via a Linear layer and SiLU activation.
 
 ### The Reverse Step
 
-The sampling logic in `sample.py` implements the following reverse step formula from Ho et al.:
+The sampling logic in `sample.py` implements the following reverse step formula
+from Ho et al.:
 
 Where  is your UNet's noise prediction.
 
----
-
-## ✉️ Support
-
-If you encounter technical issues with the provided code, please contact the TA at: **taariq.nazar@math.su.se**.
-
-**Would you like me to help you draft the code snippet needed for Task 5 to extract those intermediate  predictions?**
