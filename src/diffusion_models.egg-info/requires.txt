@@ -1,6 +1,0 @@
-gitingest>=0.3.1
-setuptools<=79.0.0
-tensorboard>=2.20.0
-torch>=2.8.0
-torchvision>=0.23.0
-tqdm>=4.67.3
