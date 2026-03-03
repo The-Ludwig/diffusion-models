@@ -1,6 +1,12 @@
 checkpoints
 runs
 
+ddpm_mnist_final.pth
+generated
+*.pdf
+
+src/diffusion_models.egg-info/
+
 __pycache__
 .ipynb_checkpoints
 .DS_Store
