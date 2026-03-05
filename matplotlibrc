@@ -1,0 +1,122 @@
+# ============================================================================
+# Base settigns
+# ============================================================================
+
+# Improve rendering quality
+figure.dpi:       120
+savefig.dpi:      300
+savefig.format:   pdf
+savefig.bbox: tight
+
+# Better layout
+figure.autolayout: False
+figure.constrained_layout.use: True
+figure.figsize: 7, 5
+
+# ============================================================================
+# FONT SETTINGS
+# ============================================================================
+
+# Font family settings with fallback chain
+# Libertinus Serif is used for serif text, with fallbacks to similar high-quality fonts
+font.family:  serif
+font.serif:   Libertinus Serif, Linux Libertine O, Linux Libertine, Liberation Serif, DejaVu Serif, Bitstream Vera Serif, Computer Modern Roman, Times New Roman, Times, serif
+
+# Sans-serif fallback chain (for when sans-serif is explicitly requested)
+font.sans-serif: Libertinus Sans, Linux Biolinum O, Linux Biolinum, Liberation Sans, DejaVu Sans, Bitstream Vera Sans, Computer Modern Sans Serif, Arial, Helvetica, sans-serif
+
+# Monospace fallback chain
+font.monospace: Libertinus Mono, Liberation Mono, DejaVu Sans Mono, Bitstream Vera Sans Mono, Computer Modern Typewriter, Courier New, Courier, monospace
+
+# Font sizes
+font.size:    17.0
+
+# ============================================================================
+# MATHTEXT SETTINGS
+# ============================================================================
+
+# For mathematical expressions, use STIX fonts which blend well with Libertinus
+# STIX fonts are designed to work with Times-like fonts (similar to Libertinus)
+mathtext.fontset: stix
+# In principle, this is the Libertinus Math setup, but 
+# Matplotlib can't properly read the math tables from the font
+# mathtext.fontset : custom
+# mathtext.it      : Libertinus Math:italic
+# mathtext.rm      : Libertinus Math
+# mathtext.bf      : Libertinus Math:bold
+# mathtext.cal     : Libertinus Math:italic
+# mathtext.sf      : Libertinus Math
+# mathtext.tt      : Libertinus Math
+mathtext.default: it  # default style for math symbols (it=italic, rm=roman, bf=bold, etc.)
+# Fallback for missing math characters
+mathtext.fallback: cm
+
+# Alternative: If you want to use Libertinus Math (requires it to be installed)
+# and are using LaTeX rendering, you can uncomment these instead:
+# text.usetex: True
+text.latex.preamble: \usepackage{libertinus}
+
+# ============================================================================
+# AXES AND LABELS
+# ============================================================================
+
+# Ensure consistent font rendering across all text elements
+axes.labelsize:   medium
+axes.titlesize:   large
+axes.titleweight: normal
+
+xtick.labelsize:  small
+ytick.labelsize:  small
+
+legend.fontsize:  medium
+legend.title_fontsize: medium
+
+figure.titlesize: large
+figure.titleweight: normal
+
+# --- Axes + grid styling ---
+axes.edgecolor: 2F2F2F
+axes.linewidth: 1.0
+axes.grid: True
+axes.spines.top: True
+axes.spines.right: True
+
+# --- Ticks ("in ticks") ---
+xtick.direction: in
+ytick.direction: in
+xtick.top: True
+ytick.right: True
+xtick.major.size: 5
+ytick.major.size: 5
+xtick.minor.visible: True
+ytick.minor.visible: True
+xtick.minor.size: 3
+ytick.minor.size: 3
+
+# --- Lines / markers ---
+lines.linewidth: 2.0
+lines.markersize: 5
+
+# --- Legend ---
+legend.frameon: True
+legend.framealpha: 0.9
+legend.edgecolor: D0D0D0
+legend.facecolor: F8F9FB
+
+
+# ============================================================================
+# COLORS
+# ===========================================================================
+
+# Petroff colors from https://arxiv.org/pdf/2107.02270
+# Petroff 10 colors, reordered
+# ['purple', 'orange', 'brown', 'orange2', 'blue', 'red', 'tan', 'gray2', 'light blue', 'gray']
+# axes.prop_cycle: cycler('color', ['832DB6', 'FFA90E', 'A96B59', 'E76300', '3F90DA', 'BD1F01', 'B9AC70', '717581', '92DADD', '94A4A2'])
+# Petroff 10 colors, normal order
+# ['blue', 'orange', 'red', 'gray', 'purple', 'brown', 'orange2', 'tan', 'gray2', 'light blue']
+# axes.prop_cycle: cycler('color', ['3F90DA', 'FFA90E', 'BD1F01', '94A4A2', '832DB6', 'A96B59', 'E76300', 'B9AC70', '717581', '92DADD'])
+# ['blue', 'orange', 'red', 'purple', 'gray', 'light blue', 'blue2', 'gray2']
+# axes.prop_cycle: cycler('color', ['1845FB', 'FF5E02', 'C91F16', 'C849A9', 'ADAD7D', '86C8DD', '578DFF', '656364'])
+# ['blue', 'orange', 'red', 'purple', 'gray', 'purple2']
+axes.prop_cycle: cycler('color', ['5790FC', 'F89C20', 'E42536', '964A8B', '9C9CA1', '7A21DD'])
+

@@ -5,6 +5,7 @@ from pathlib import Path
 from assignment1.model import UNet
 
 SAVE_STEPS = [300, 250, 200, 150, 100, 50, 0]
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 @torch.no_grad()
 def sample(
@@ -56,24 +57,43 @@ def sample(
     return x
 
 
-if __name__ == "__main__":
+def load_model():
     # Hyperparams (assume stays as trained)
     T = 300
-    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # DDPM Schedule (assume stays as trained)
-    beta = torch.linspace(1e-4, 0.02, T).to(device)
+    beta = torch.linspace(1e-4, 0.02, T).to(DEVICE)
     alpha = 1.0 - beta
     alpha_cumprod = torch.cumprod(alpha, dim=0)
 
     # Load latest model 
-    model = UNet().to(device) 
+    model = UNet().to(DEVICE) 
     model_weights = torch.load("ddpm_mnist_final.pth")
 
     model.load_state_dict(model_weights['model'], strict=True)
+    return model
+
+def get_sample(model, n_samples=1):
+    T = 300
+
+    # DDPM Schedule (assume stays as trained)
+    beta = torch.linspace(1e-4, 0.02, T).to(DEVICE)
+    alpha = 1.0 - beta
+    alpha_cumprod = torch.cumprod(alpha, dim=0)
+
+    s = sample(model, n_samples, 1, 28, T, alpha, alpha_cumprod, beta, DEVICE)
+    # rescale from [0, 1] to [-1, 1]
+    return s*2 - 1
+
+if __name__ == "__main__":
+    model = load_model()
+
+    beta = torch.linspace(1e-4, 0.02, T).to(DEVICE)
+    alpha = 1.0 - beta
+    alpha_cumprod = torch.cumprod(alpha, dim=0)
 
     # generate images
     path = Path("solution_1/generated/")
     path.mkdir(exist_ok=True, parents=True)
-    sample(model, 5, 1, 28, T, alpha, alpha_cumprod, beta, device, save_t=SAVE_STEPS, save_path=path)
+    sample(model, 5, 1, 28, T, alpha, alpha_cumprod, beta, DEVICE, save_t=SAVE_STEPS, save_path=path)
 
