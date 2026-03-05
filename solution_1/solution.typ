@@ -59,6 +59,19 @@ This added layer of learned embeding in higher dimension can help to disentangle
 space. 
 The learned embedinng is then added at every risidual block in the UNet architecture. 
 
+== Task 3 
+_ Plot the training and validation loss over 50 epochs. Save generated samples every 5 _
+#figure(
+    image("./loss_plot.png", width: 100%),
+    caption: [Training and validation loss over 50 epochs.],
+)
+
+== Task 4
+_ How many epoch does it take for the model to start generating recognizable images?
+Is there a point where the loss continues to decrease but the generated images do not improve in
+quality? Discuss the implications of this observation for training diffusion models.
+_
+
 == Task 5
 
 #let pad3(n) = {
@@ -80,7 +93,28 @@ The learned embedinng is then added at every risidual block in the UNet architec
     caption: [Generated samples at steps $t=$ 0, 50, 100, 150, 200, 250 and 300.],
 )
 
+== Task 6
+_ Compute the FID and IS for 1,000 generated samples. If your model achieves a high
+Inception Score but also a high FID, what does this suggest about the diversity of your generated
+samples relative to the true dataset? _ 
+
+// center this
+#align(center,table(
+    columns: 3,
+    // width: 100%,
+    align: (left, center, center),
+    stroke: none,
+    table.hline(stroke: 1.3pt + black),
+    table.header([Metric], [Model], [Baseline (Ho et al.)]),
+    table.hline(stroke: 0.8pt + black),
+    [FID (#sym.arrow.b)], [5.8], [3.17 (CIFAR-10)],
+    [FID (#sym.arrow.b) (BEFORE SOFTMAX)], [2.88], [3.17 (CIFAR-10)],
+    [IS (#sym.arrow.t)], [7.14 $plus.minus$ 0.25], [9.46 (CIFAR-10)],
+    table.hline(stroke: 1.3pt + black),
+))
+
+
 
 == Acknowledgement 
 I used AI tools to enhance the language of my writing, but did not use the generated text directly -- I only considered the suggestions.
-I also used AI tools to answer questions about the codebase (Claude Code/Mistral Vibe).
+I also used AI tools to answer questions about the codebase and debugging for the added code.
