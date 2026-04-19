@@ -1,16 +1,39 @@
-checkpoints
-runs
-
-__pycache__
-.ipynb_checkpoints
-.DS_Store
+# Build / venv
+__pycache__/
 *.pyc
-*.pkl
+*.pyo
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vimtex/
+.tex_output/
+~
+
+# Training artifacts
+checkpoints/
+runs/
 *.log
 *.csv
 *.json
 *.h5
+*.pkl
 
+# Student-generated plots and sample dumps
+*.png
 
+# MNIST download cache (auto-generated)
+data/MNIST/
+src/assignment2/data/
 
-
+# Checkpoints: ignore all .pt / .pth by default; whitelist shipped ones.
+*.pt
+*.pth
+!ddpm_mnist_final.pth
+!src/assignment2/micro_dit_checkpoint.pt
