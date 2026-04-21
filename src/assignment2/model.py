@@ -74,18 +74,21 @@ class AdaLayerNorm(nn.Module):
 
     def __init__(self, dim, cond_dim):
         super().__init__()
-        # TODO (Task 1): create
-        #   - self.norm: nn.LayerNorm(dim, elementwise_affine=False)
-        #   - self.proj: nn.Linear(cond_dim, 2 * dim)
-        raise NotImplementedError("Task 1: implement AdaLayerNorm.__init__")
+
+        self.dim = dim
+        self.cond_dim = cond_dim
+
+        self.norm = nn.LayerNorm(dim, elementwise_affine=False)
+        self.proj = nn.Linear(cond_dim, 2*dim)
 
     def forward(self, x, cond):
-        # TODO (Task 1):
-        #   1. project cond through self.proj, reshape so it broadcasts over
-        #      the token axis (insert a length-1 dimension at position 1),
-        #   2. split the projection into scale and shift along the last axis,
-        #   3. return (1 + scale) * self.norm(x) + shift
-        raise NotImplementedError("Task 1: implement AdaLayerNorm.forward")
+        scale_shift = self.proj(cond)
+
+        # None inserts a size-one axis, so it matches the shape of x
+        scale, shift = scale_shift[:,None,:self.dim], scale_shift[:,None,self.dim:]
+        
+        return (1+scale)*self.norm(x) + shift
+
 
 
 class DiTBlock(nn.Module):

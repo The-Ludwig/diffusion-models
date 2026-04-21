@@ -13,6 +13,7 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn.functional as F
 from tqdm.auto import tqdm
@@ -59,7 +60,7 @@ def sample_images(model, labels, guidance_scale=3.0, initial_noise=None, device=
     model.eval()
     sch = make_schedule(device)
     N = labels.shape[0]
-    x = initial_noise if initial_noise is not None else torch.randn(
+    x = initial_noise.clone() if initial_noise is not None else torch.randn(
         N, 1, PAD_SIZE, PAD_SIZE, device=device
     )
     null_labels = torch.full_like(labels, model.null_class_id)
@@ -70,24 +71,12 @@ def sample_images(model, labels, guidance_scale=3.0, initial_noise=None, device=
         eps_uncond = model(x, t_batch, null_labels)
         eps_cond = model(x, t_batch, labels)
 
-        # ------------------------------------------------------------------
-        # TODO (Task 3, step 1): combine eps_uncond and eps_cond into `eps`
-        # using the Classifier-Free Guidance formula
-        #     eps = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
-        # Replace the line below with that assignment.
-        # ------------------------------------------------------------------
-        raise NotImplementedError("Task 3 step 1: replace this line with the CFG combination")
+        eps = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
 
-        # ------------------------------------------------------------------
-        # TODO (Task 3, step 2): compute the DDPM posterior mean `mean`
-        #     mean = (1 / sqrt(alpha_t)) * (x - (beta_t / sqrt(1 - bar_alpha_t)) * eps)
-        # The schedule buffers you need are already built in `sch`:
-        #   sch["sqrt_recip_alphas"][t]              == 1 / sqrt(alpha_t)
-        #   sch["betas"][t]                          == beta_t
-        #   sch["sqrt_one_minus_alphas_cumprod"][t]  == sqrt(1 - bar_alpha_t)
-        # Replace the line below with that assignment.
-        # ------------------------------------------------------------------
-        raise NotImplementedError("Task 3 step 2: replace this line with the posterior mean")
+        sqrt_recip_alpha = sch["sqrt_recip_alphas"][t]
+        beta_fac = sch["betas"][t]/sch["sqrt_one_minus_alphas_cumprod"][t]
+
+        mean = sqrt_recip_alpha * (x - beta_fac * eps)
 
         if t > 0:
             z = torch.randn_like(x)
@@ -107,15 +96,25 @@ def load_model(checkpoint_path, device):
     return model
 
 
-def plot_row(samples, path, title=None):
+def plot_row(samples, path, title=None, num_per_class=None):
     N = samples.shape[0]
-    fig, axes = plt.subplots(1, N, figsize=(2 * N, 2))
+
+    if num_per_class is None:
+        nrows = 1
+        ncols = N
+    else:
+        nrows = num_per_class
+        ncols = N // num_per_class
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(2 * ncols, 2*nrows))
     if N == 1:
-        axes = [axes]
-    for i, ax in enumerate(axes):
+        axes = np.array([axes])
+    for idx, ax in np.ndenumerate(axes):
+        i = idx[1]*nrows+idx[0]
+
         img = samples[i].detach().cpu().squeeze().clamp(-1, 1) * 0.5 + 0.5
         ax.imshow(img, cmap="gray")
-        ax.set_title(f"{i % NUM_CLASSES}")
+        ax.set_title(f"{idx[1]}")
         ax.axis("off")
     if title:
         plt.suptitle(title)
@@ -171,6 +170,7 @@ if __name__ == "__main__":
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
+        print("Using CUDA")
     elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
         device = torch.device("mps")
     else:
@@ -180,5 +180,5 @@ if __name__ == "__main__":
     model = load_model(args.checkpoint, device)
     labels = torch.arange(NUM_CLASSES, device=device).repeat_interleave(args.num_per_class)
     samples = sample_images(model, labels, guidance_scale=args.w, device=device)
-    plot_row(samples, args.out, title=f"w = {args.w}")
+    plot_row(samples, args.out, title=f"w = {args.w}", num_per_class=args.num_per_class)
     print(f"Saved {args.out}")

@@ -12,12 +12,22 @@ Provided:
   - load_mnist_tensors: convenience loader that returns MNIST images in the
     same (N, 1, 32, 32) layout and [-1, 1] range as the sampler output.
 """
-
 from __future__ import annotations
+
+import argparse
+from tqdm import tqdm
+
+from model import MicroDiT, NUM_CLASSES, PAD_SIZE
+from sample import sample_images, plot_sweep_grid, load_model
+
+import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from pathlib import Path
+
+DATA_DIR = Path(__file__).absolute().parents[2]/"data"
 
 
 @torch.no_grad()
@@ -40,46 +50,7 @@ def pixel_l2_nearest_neighbor(generated: torch.Tensor, training_data: torch.Tens
     return best_idx, best_dist
 
 
-@torch.no_grad()
-def improved_pr_pixel(generated: torch.Tensor, real: torch.Tensor, k: int = 5):
-    """Improved Precision and Recall in pixel space (Kynkaanniemi et al., 2019).
-
-    For each point the method defines a hypersphere whose radius equals the
-    distance to its k-th nearest neighbor *within its own set*. A generated
-    sample is counted as "precise" if it falls inside at least one real
-    hypersphere; a real sample is "recalled" if it falls inside at least one
-    generated hypersphere.
-
-    Args:
-        generated: (N_gen, C, H, W) generated images.
-        real:      (N_real, C, H, W) real images.
-        k: number of nearest neighbors used to define hypersphere radii.
-
-    Returns:
-        precision: float in [0, 1].
-        recall:    float in [0, 1].
-    """
-    gen_flat = generated.reshape(generated.shape[0], -1).float()
-    real_flat = real.reshape(real.shape[0], -1).float()
-
-    real_dists = torch.cdist(real_flat, real_flat)
-    real_radii = real_dists.topk(k + 1, dim=1, largest=False).values[:, -1]
-
-    gen_dists = torch.cdist(gen_flat, gen_flat)
-    gen_radii = gen_dists.topk(k + 1, dim=1, largest=False).values[:, -1]
-
-    cross_dists = torch.cdist(gen_flat, real_flat)
-
-    inside_real = (cross_dists < real_radii.unsqueeze(0)).any(dim=1)
-    precision = float(inside_real.float().mean().item())
-
-    inside_gen = (cross_dists.t() < gen_radii.unsqueeze(0)).any(dim=1)
-    recall = float(inside_gen.float().mean().item())
-
-    return precision, recall
-
-
-def load_mnist_tensors(train: bool = True, root: str = "./data", limit: int | None = None):
+def load_mnist_tensors(train: bool = True, root: Path | str = DATA_DIR, limit: int | None = None):
     """Load MNIST as (N, 1, 32, 32) tensors in [-1, 1], matching the sampler.
 
     Args:
@@ -112,3 +83,66 @@ def load_mnist_tensors(train: bool = True, root: str = "./data", limit: int | No
         images = images[:limit]
         labels = labels[:limit]
     return images, labels
+
+
+def plot_closest_imgs(sample, training_data, savepath):
+    N = sample.shape[0]
+
+    fig, axs = plt.subplots(N, 2, figsize=(4, 2*N))
+    for i, ax in enumerate(axs):
+        gen_img = sample[i]
+        gen_img = gen_img.detach().cpu().squeeze().clamp(-1, 1) * 0.5 + 0.5
+
+        nearest_idx, dist = pixel_l2_nearest_neighbor(gen_img, training_data)
+
+        ax[0].imshow(training_data[nearest_idx,0], cmap="gray")
+        ax[0].set_title(f"Closest image '{training_labels[nearest_idx]}'", fontsize="small")
+        ax[0].axis("off")
+
+        ax[1].imshow(gen_img, cmap="gray")
+        ax[1].set_title(f"Gen. $L_2$-dist: {dist:.1f}", fontsize="small")
+        ax[1].axis("off")
+
+    fig.savefig(savepath)
+
+    return fig, axs
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--checkpoint", type=str, default="micro_dit_checkpoint.pt")
+    parser.add_argument("--w", type=float, default=3.0, help="guidance scale")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--out", type=str, default="memorization.png")
+    parser.add_argument("--num-per-class", type=int, default=1)
+    args = parser.parse_args()
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        device_id = torch.cuda.current_device()
+        gpu_name = torch.cuda.get_device_name(device_id)
+        print(f"Using CUDA device: {gpu_name}")
+    elif getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+    torch.manual_seed(args.seed)
+
+    N = args.num_per_class * NUM_CLASSES
+
+    initial_noise = torch.randn(
+        N, 1, PAD_SIZE, PAD_SIZE, device=device
+    )
+
+    model = load_model(args.checkpoint, device)
+    labels = torch.arange(NUM_CLASSES, device=device).repeat_interleave(args.num_per_class)
+
+    sample = sample_images(model, labels, guidance_scale=args.w, device=device, initial_noise=initial_noise)
+
+    print("Load training data")
+    training_data, training_labels = load_mnist_tensors(train=True)
+    print("Done.")
+
+    plot_closest_imgs(sample, training_data, args.out)
+   
+    print(f"Saved {args.out}")
