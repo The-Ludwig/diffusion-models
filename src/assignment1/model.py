@@ -128,10 +128,13 @@ class UpBlock(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, in_channels=1, model_channels=32, time_emb_dim=64):
+    def __init__(self, in_channels=1, model_channels=32, time_emb_dim=64, n_classes=None):
         super().__init__()
         
         self.time_mlp = TimeEmbedding(time_emb_dim)
+
+        if n_classes is not None:
+            self.label_emb = nn.Embedding(n_classes, n_classes)
         
         # Initial projection
         self.init_conv = nn.Conv2d(in_channels, model_channels, 3, padding=1)
@@ -172,10 +175,13 @@ class UNet(nn.Module):
             nn.Conv2d(model_channels, in_channels, 3, padding=1)
         )
     
-    def forward(self, x, t):
+    def forward(self, x, t, guidance=None):
         t_emb = self.time_mlp(t)
         
         x = self.init_conv(x)
+        if guidance is not None:
+            label_emb = self.label_emb(guidance)
+            x = x + label_emb[:, :, None, None]
         
         # Down 1
         skip1 = self.down1[0](x, t_emb)

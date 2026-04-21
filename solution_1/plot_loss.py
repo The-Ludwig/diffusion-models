@@ -1,7 +1,9 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+import torchvision as tv
 
 
 def load_scalar_series(log_dir: Path, tag: str) -> tuple[list[int], list[float]]:
@@ -11,7 +13,7 @@ def load_scalar_series(log_dir: Path, tag: str) -> tuple[list[int], list[float]]
     if not log_dir.exists():
         raise FileNotFoundError(f"Log directory not found: {log_dir}")
 
-    accumulator = EventAccumulator(str(log_dir))
+    accumulator = EventAccumulator(str(log_dir), size_guidance={"images": 0})
     accumulator.Reload()
 
     available_tags = accumulator.Tags().get("scalars", [])
@@ -25,8 +27,31 @@ def load_scalar_series(log_dir: Path, tag: str) -> tuple[list[int], list[float]]
     values = [event.value for event in events]
     return np.array(steps), np.array(values)
 
+def load_image_series(log_dir: Path, tag: str) -> list[np.ndarray]:
+    if not isinstance(log_dir, Path):
+        log_dir = Path(log_dir)
+
+    if not log_dir.exists():
+        raise FileNotFoundError(f"Log directory not found: {log_dir}")
+
+    accumulator = EventAccumulator(str(log_dir), size_guidance={"images": 0})
+    accumulator.Reload()
+
+    available_tags = accumulator.Tags().get("images", [])
+    if tag not in available_tags:
+        raise ValueError(
+            f"Tag '{tag}' not found in {log_dir}. Available image tags: {available_tags}"
+        )
+
+    events = accumulator.Images(tag)
+    images = [event.encoded_image_string for event in events]
+    steps = [event.step for event in events]
+
+    return steps, images
+
 step, loss_train = load_scalar_series("runs/ddpm_mnist/train", "Loss/epoch")
 step_val, loss_val = load_scalar_series("runs/ddpm_mnist/val", "Loss/epoch")
+step_val_images, val_images = load_image_series("runs/ddpm_mnist/train", "Generated_Digits")
 
 fig, ax = plt.subplots(figsize=(9, 5))
 ax.plot(step, loss_train, label="Train Loss", marker="x")
@@ -45,3 +70,11 @@ ax.set_ylabel(r"Loss $L$")
 ax.legend()
 
 fig.savefig("solution_1/loss_plot.png")
+
+output_dir = Path("solution_1/generated")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+for image_step, encoded_image in zip(step_val_images, val_images):
+    encoded_tensor = torch.tensor(list(encoded_image), dtype=torch.uint8)
+    decoded_image = tv.io.decode_image(encoded_tensor)
+    tv.io.write_png(decoded_image, str(output_dir / f"epoch_{image_step:03d}.png"))

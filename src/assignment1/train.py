@@ -15,6 +15,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 lr = 1e-3
 epochs = 50
 batch_size = 128
+p_unguided = 0.2
 
 # DDPM Schedule
 beta = torch.linspace(1e-4, 0.02, T).to(device)
@@ -31,7 +32,7 @@ def forward_diffusion(x_0, t):
 
 def train():
     dataloader = get_dataloader(batch_size=batch_size)
-    model = UNet().to(device)  # or ImprovedUNet
+    model = UNet(n_classes=10).to(device)  # or ImprovedUNet
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     # Initialize EMA
@@ -49,12 +50,15 @@ def train():
         train_loss = 0
 
         batch_pbar = tqdm(dataloader, desc=f"Epoch {epoch}", leave=False)
-        for images, _ in batch_pbar:
+        for images, labels in batch_pbar:
             images = images.to(device)
+            labels = labels.to(device)
             t = torch.randint(0, T, (images.shape[0],), device=device).long()
             x_noisy, noise = forward_diffusion(images, t)
 
-            predicted_noise = model(x_noisy, t)
+            guidance = torch.rand(1).item() >= p_unguided  # Randomly decide whether to use guidance
+
+            predicted_noise = model(x_noisy, t, labels if guidance else None)
             loss = F.mse_loss(predicted_noise, noise)
 
             optimizer.zero_grad()
@@ -107,7 +111,7 @@ def train():
 
             # Use EMA weights for sampling
             ema.apply_shadow()
-            images = sample(model, 16, 1, 28, T, alpha, alpha_cumprod, beta, device)
+            images = sample(model, 9, 1, 28, T, alpha, alpha_cumprod, beta, device)
             ema.restore()
 
             grid = torchvision.utils.make_grid(images, nrow=4)
